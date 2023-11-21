@@ -1,60 +1,70 @@
-import { useEffect, useState } from 'react';
-import { read, utils, writeFile } from 'xlsx';
-import chart from './Chart.js.xlsx';
-import { createDiagonalPattern } from './util';
-import Chart from 'chart.js/auto';
 import { Bar } from 'react-chartjs-2';
-import DataGraph from './DataGraph';
-export default function App() {
-        const [filtered, setFiltered] = useState([]);
+import { useState, useEffect } from 'react';
+import covidSheet from './covid-19 states current.xlsx';
+import { read, utils, writeFile } from 'xlsx';
+import './index.css';
+import { createDiagonalPattern } from './util';
 
+
+function DataGraph() {
+        const [pres, setPres] = useState([]);
+
+        const danger = createDiagonalPattern('red');
+        const safe = createDiagonalPattern('green');
+        const [x, setX] = useState([]);
+        const [y, setY] = useState([])
+        /* Fetch and update the state once */
         useEffect(() => {
                 (async () => {
                         /* Download file */
-                        const f = await (await fetch(chart)).arrayBuffer();
+                        const f = await (await fetch(covidSheet)).arrayBuffer();
                         const wb = read(f); // parse the array buffer
                         const ws = wb.Sheets[wb.SheetNames[0]]; // get the first worksheet
                         const data = utils.sheet_to_json(ws); // generate objects
-                        const filtered_data = data.filter(v => { if (!v.qtr.includes('2021') && !v.qtr.includes('2022') && v.bu === 'ALL') return v })
-                        console.log(filtered_data);
-                        setFiltered(filtered_data)
+                        setPres(data); // update state
+
                 })();
 
 
         }, []);
-        const bgArray=filtered.map((v)=>{
-                if(v['qtr'].includes('BL') ){
+        // new array
+        const bgArray = pres.map((v) => {
+                if (v.positive > 8000 && v.positive <= 10000) {
+                        return danger
+                } else if (v.positive > 10000) {
                         return 'white'
-                }else if(v['qtr'].includes('2023')  ){
-                        return 'blue'
-                } else if(v['qtr'].includes('TARGET')){
-                        return createDiagonalPattern()
-                }else{
-                        return 'white'
+                } else {
+                        return safe
                 }
         })
+
+        console.log(bgArray);
         const state = {
                 // x axis
-                labels: filtered.map(v  =>  v['qtr'] ),
+                labels: pres.map((val) => val.state),
 
                 datasets: [
                         {
-                                label: '2023 ALL',
-                                backgroundColor: bgArray ,
+                                label: 'Rainfall',
+                                backgroundColor: bgArray,
                                 borderWidth: 2,
+
                                 //     y axis
-                                data: filtered.map(val => Number(val.value))
+                                data: pres.map(val => val.positive)
                         }
                 ]
         }
+
+
         return (
-                <div className="App">
-                <div className='bar1'>
+
+                <div className="bar_graph">
                         <Bar
                                 data={state}
                                 options={{
                                         title: {
                                                 display: true,
+                                                text: 'Average Rainfall per month',
                                                 fontSize: 20
                                         },
                                         legend: {
@@ -63,9 +73,9 @@ export default function App() {
                                         }
                                 }}
                         />
-                        
                 </div>
-                <DataGraph/>
-                </div>
-        )
+
+        );
 }
+
+export default DataGraph;
